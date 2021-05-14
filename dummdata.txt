@@ -1,0 +1,30 @@
+const [tableData, setTableData] = useState([])
+
+  const config = {
+    perPageOptions: [10, 20, 30, 40, 50, 60],
+    columns: [
+      {
+        field: 'columnA',
+        header: 'Coumn A',
+        sort: true
+      },
+      {
+        field: 'columnB',
+        header: 'Coumn B',
+        sort: true
+      },
+      {
+        field: 'columnC',
+        header: 'Coumn C',
+        sort: false
+      }
+    ]
+  }
+  useEffect(() => {
+    const data = []
+    for (let i = 0; i < 35; i++) {
+      const obj = { columnA: `columnA ${i}`, columnB: `columnB ${i}${i}`, columnC: `columnC ${i}`, columnD: `columnD ${i}`, columnE: `columnE ${i}` }
+      data.push(obj)
+    }
+    setTableData(data)
+  }, [])

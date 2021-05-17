@@ -5,7 +5,7 @@ const [tableData, setTableData] = useState([])
     columns: [
       {
         field: 'columnA',
-        header: 'Coumn A',
+        header: 
         sort: true
       },
       {

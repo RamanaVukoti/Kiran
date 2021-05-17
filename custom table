@@ -1,0 +1,155 @@
+
+
+import { useEffect, useState } from 'react';
+
+import './BrDatatable.css'
+
+interface IBrDataTable {
+    data: Array<any>;
+    config: any
+}
+
+const Pagination = ({ currentPage, totalPages, paginateData, tableData, recordsPerPage }: any) => {
+    return <nav aria-label="Page navigator" className="row justify-content-center">
+
+        <ul className="pagination false">
+            <li className={`page-item ${currentPage == 1 ? 'disabled' : ''}`}><a onClick={() => paginateData((currentPage - 1), recordsPerPage, tableData)} className="page-link">pre</a></li>
+            {(new Array(totalPages).fill(totalPages)).map((d, i) => {
+                return <li key={Math.random()} className={`page-item ${currentPage === (i + 1) ? 'active' : ''}`}>
+                    <a onClick={() => paginateData((i + 1), recordsPerPage, tableData)} className="page-link">{i + 1}</a></li>
+            })}
+            <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}><a onClick={() => paginateData((currentPage + 1), recordsPerPage, tableData)} className="page-link">next</a></li>
+
+        </ul>
+    </nav>
+}
+
+const TableBody = ({ filterdTableData, config }: any) => {
+    return (
+        <> {filterdTableData.map(obj => {
+            return <tr key={Math.random()}>
+                {
+                    config.columns.map(column => {
+                        if (column.isCustom) {
+                            const Comp = column.comp
+                            return <td key={Math.random()} scope="row">
+                                <Comp clickCallback={() => { column.clickCallback(obj) }}></Comp>
+                            </td>
+                        }
+
+                        return <td key={Math.random()} scope="row">{obj[column.field]}</td>
+                    })
+                }
+            </tr>
+        })}
+        </>)
+}
+
+
+const Theader = ({ config, sort }: any) => {
+    return (
+        <>  {
+            config.columns.map(column => {
+                return <th key={Math.random()} onClick={() => column.sort && sort(column.field)}>{column.header} </th>
+            })
+        }
+        </>
+    )
+}
+
+
+
+export const BrDataTable = ({ data, config }: IBrDataTable) => {
+    const [tableData, setTableData] = useState(data || [])
+    const [filterdTableData, setFilteredTableData] = useState([])
+    const [currentPage, setCurrentPage] = useState(1)
+    const [totalPages, setTotalPages] = useState(0)
+    const [sortDirections, setSortDirections] = useState({})
+
+    const [recordsPerPage, setRecordsPerpage] = useState(10)
+
+    useEffect(() => {
+       
+        setTableData(data)
+        if (data && data.length) {
+
+            setTotalPages(Math.ceil(data.length / recordsPerPage))
+            setFilteredTableData(data)
+            paginateData(0, recordsPerPage, data)
+        }
+
+    }, [JSON.stringify(data), config])
+    const paginateData = (pageN, perPage, data) => {
+        const page = pageN === 0 ? pageN : pageN - 1
+
+        const rangeMin = page * perPage
+        const rangeMax = rangeMin + perPage
+        const records = data.filter((obj, index) => index >= rangeMin && index < rangeMax)
+        setFilteredTableData(records)
+        if (records && records.length > 0) {
+            setCurrentPage(page + 1)
+        }
+    }
+    const sort = (column) => {
+        const sortedData = tableData.sort((a, b) => a[column] > b[column] ? (sortDirections[column] ? 1 : -1) : (sortDirections[column] ? -1 : 1))
+        paginateData(0, recordsPerPage, sortedData)
+        setSortDirections({ ...sortDirections, [column]: !(sortDirections[column]) })
+
+    }
+
+    const perPage = (e) => {
+        const perPageLocal = e.target.value
+        setTotalPages(Math.ceil(tableData.length / perPageLocal))
+        setRecordsPerpage(perPageLocal)
+        paginateData(0, perPageLocal, tableData)
+    }
+
+    return (
+        <div className="App">
+
+            <div className="table-responsive">
+                <table className="table table-striped table-inverse custom">
+                    <thead className="thead-inverse">
+                        <Theader config={config} sort={sort} />
+                    </thead>
+                    <tbody>
+                        <TableBody filterdTableData={filterdTableData} config={config} />
+                    </tbody>
+                </table>
+
+                {tableData && tableData.length ? <div className="row">
+                    <div className="col-md-4">
+                        {/* showing  {currentPage * config.perPage} to {(currentPage * config.perPage) + (filterdTableData && filterdTableData.length)} of {tableData.length} */}
+
+                        showing {(filterdTableData && filterdTableData.length)} of {tableData.length}
+                    </div>
+                    <div className="col-md-4">
+                        per page: <select value={recordsPerPage} onChange={(e) => perPage(e)}>
+                            {(new Array(Math.ceil((tableData.length / config.perPage))).fill(0)).map((d, i) => {
+                                return <option key={Math.random()} value={(i + 1) * config.perPage}>{(i + 1) * config.perPage}</option>
+                            })}
+                        </select>
+
+                    </div>
+                    <div className="col-md-4">
+                        <Pagination tableData={tableData} currentPage={currentPage} totalPages={totalPages} recordsPerPage={recordsPerPage} paginateData={paginateData} />
+
+                    </div>
+                </div> : <div className="text-center">No data available</div>}
+
+            </div>
+        </div>
+    );
+}
+
+
+
+
+
+
+
+
+
+
+
+

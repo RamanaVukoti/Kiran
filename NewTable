@@ -1,0 +1,182 @@
+
+import { useEffect, useState } from 'react';
+
+const pageNumber = (iterationPages, iteration, page) => {
+  // console.log({ iteration })
+  return ((iterationPages * iteration) - iterationPages) + page
+}
+
+const isActivePage = (currentPage, pageIndex, iterationPages, iteration) => {
+  if (currentPage > iterationPages) {
+    return currentPage - (iterationPages * (iteration - 1)) === pageIndex
+  } else {
+    // console.log({ currentPage, pageIndex })
+    return currentPage == pageIndex
+  }
+}
+const Pagination = ({ currentPage, paginateData, tableData, recordsPerPage, iterationPages, iteration, totalCount }) => {
+  return <nav aria-label="Page navigator" className="row justify-content-center">
+    <ul className="pagination false">
+      <li className={`page-item ${currentPage == 1 ? ' disabled' : ''}`}><a onClick={() => paginateData((currentPage - 1), recordsPerPage, tableData, iterationPages, iteration, true)} className="page-link">pre</a></li>
+      {(new Array(iterationPages).fill(iterationPages)).map((d, i) => {
+        return <li key={Math.random()} className={`page-item ${isActivePage(currentPage, (i + 1), iterationPages, iteration) ? 'active' : ''}`}>
+          <a onClick={() => paginateData((pageNumber(iterationPages, iteration, (i + 1))), recordsPerPage, tableData, iterationPages, iteration)} className="page-link">{pageNumber(iterationPages, iteration, (i + 1))}</a></li>
+      })}
+      <li className={`page-item ${(recordsPerPage * currentPage) >= totalCount ? 'disabled' : ''}`}><a onClick={() => paginateData((currentPage + 1), recordsPerPage, tableData, iterationPages, iteration)} className="page-link">next</a></li>
+    </ul>
+  </nav>
+}
+
+const TableBody = ({ filterdTableData, config }) => {
+  return (
+    <> {filterdTableData.map(obj => {
+      return <tr key={Math.random()}>
+        {
+          config.columns.map(column => {
+            if (column.isCustom) {
+              const Comp = column.comp
+              return <td key={Math.random()} scope="row">
+                <Comp clickCallback={() => { column.clickCallback(obj) }}></Comp>
+              </td>
+            }
+
+            return <td key={Math.random()} scope="row">{obj[column.field]}</td>
+          })
+        }
+      </tr>
+    })}
+    </>)
+}
+
+
+const Theader = ({ config, sort }) => {
+  return (
+    <>  {
+      config.columns.map(column => {
+        return <th key={Math.random()} onClick={() => column.sort && sort(column.field)}>{column.header} </th>
+      })
+    }
+    </>
+  )
+}
+
+
+
+export const BrDataTable = ({ data, config, apiCall, iterationArg, updateIteration, totalCount }) => {
+  const [tableData, setTableData] = useState(data || [])
+  const [filterdTableData, setFilteredTableData] = useState([])
+  const [currentPage, setCurrentPage] = useState(1)
+  // const [totalPages, setTotalPages] = useState(0)
+  const [sortDirections, setSortDirections] = useState({})
+  const [iterationPages, setIterationPages] = useState()
+  const [iteration, setIteration] = useState(iterationArg)
+
+  const [recordsPerPage, setRecordsPerpage] = useState(config.perPage)
+
+  useEffect(() => {
+
+    setTableData(data)
+    if (data && data.length) {
+      // const totalPages = Math.ceil(data.length / recordsPerPage)
+      const iterationPages = Math.ceil(config.apiFetchLimit / recordsPerPage)
+
+      //setTotalPages(totalPages)
+      setIterationPages(iterationPages)
+      setIteration(iterationArg)
+      setFilteredTableData(data)
+
+      paginateData(currentPage, recordsPerPage, data, iterationPages, iterationArg)
+    }
+
+  }, [JSON.stringify(data), iterationArg, recordsPerPage])
+  const paginateData = (pageN, perPage, data, iterationPages, iterationArg, isPrevious) => {
+    setCurrentPage(pageN)
+    if (pageN > (iterationPages * iterationArg)) {
+      //fetch next set of api records and update 
+      if (data.length > (pageN * recordsPerPage)) {
+        updateIteration(iteration + 1)
+      } else {
+        apiCall(iteration + 1)
+      }
+
+
+    } else {
+      const page = pageN - 1
+      const rangeMin = page * perPage
+      const rangeMax = rangeMin + perPage
+      const records = data.filter((obj, index) => index >= rangeMin && index < rangeMax)
+      setFilteredTableData(records)
+      // if (records && records.length > 0) {
+      //   // setCurrentPage(pageN)
+      // }
+      if (isPrevious) {
+        const currentIterationPageStar = (iterationPages * iterationArg) - iterationPages
+        if (pageN <= currentIterationPageStar) {
+          updateIteration(iterationArg - 1)
+        }
+      }
+    }
+
+  }
+  const sort = (column) => {
+    const sortedData = tableData.sort((a, b) => a[column] > b[column] ? (sortDirections[column] ? 1 : -1) : (sortDirections[column] ? -1 : 1))
+    paginateData(0, recordsPerPage, sortedData)
+    paginateData(currentPage, recordsPerPage, sortedData, iterationPages, iteration)
+    setSortDirections({ ...sortDirections, [column]: !(sortDirections[column]) })
+
+  }
+
+  const perPage = (e) => {
+    const perPageLocal = e.target.value
+    setRecordsPerpage(parseInt(perPageLocal))
+  }
+
+  return (
+    <div className="App">
+
+      <div className="table-responsive">
+        <table className="table table-striped table-inverse custom">
+          <thead className="thead-inverse">
+            <Theader config={config} sort={sort} />
+          </thead>
+          <tbody>
+            <TableBody filterdTableData={filterdTableData} config={config} />
+          </tbody>
+        </table>
+
+        {tableData && tableData.length ? <div className="row">
+          <div className="col-md-4">
+
+
+            showing  {(currentPage - 1) * recordsPerPage} - {(currentPage) * recordsPerPage} of {tableData.length}
+          </div>
+          <div className="col-md-4">
+            per page: <select value={recordsPerPage} onChange={(e) => perPage(e)}>
+              {(new Array(iterationPages).fill(iterationPages)).map((d, i) => {
+                return <option key={(i + 1) * config.perPage}>{(i + 1) * config.perPage}</option>
+              })}
+            </select>
+
+          </div>
+          <div className="col-md-4">
+            {/* totalPages={totalPages}  */}
+            <Pagination totalCount={totalCount} iteration={iteration} iterationPages={iterationPages} tableData={tableData} currentPage={currentPage} recordsPerPage={recordsPerPage} paginateData={paginateData} />
+
+          </div>
+        </div> : <div className="text-center">No data available</div>}
+
+      </div>
+    </div>
+  );
+}
+
+export default BrDataTable
+
+
+
+
+
+
+
+
+
